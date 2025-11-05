@@ -38,7 +38,7 @@ document.querySelector("#play").addEventListener(
             console.log(data)
             /// mettre à jour la grid
             grid[data[1]][data[0]] = joueur
-            / afficher la grid
+            // afficher la grid
             viewGrid()
             if(joueur === "X") {
                 joueur = "O"
