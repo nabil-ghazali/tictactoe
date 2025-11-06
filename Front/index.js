@@ -17,7 +17,16 @@ function viewGrid() {
         for (let cell of ligne) {
             const cellHTML = document.createElement("div")
             cellHTML.classList.add("cell")
-            cellHTML.textContent = cell
+            // Conversion 1/2/0 en X/O/""
+            let displayValue;
+            if (cell == 1){
+                displayValue = "X"
+            } else if (cell == 2) {
+                displayValue = "O"
+            } else {
+                displayValue = ""
+            }
+            cellHTML.textContent = displayValue
             gridHTML.appendChild(cellHTML)
         }
     }
