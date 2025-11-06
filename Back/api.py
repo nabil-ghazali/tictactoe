@@ -26,4 +26,4 @@ def play(grid: List[List[str]]):
     ## Verifier que c'est valide
     ## sinon je redemande au llm
     # return
-    return [1, 0]
+    return [6, 2]
