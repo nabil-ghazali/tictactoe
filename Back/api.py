@@ -1,11 +1,14 @@
 from typing import List, Dict
-# from game_logic import format_grid_for_llm
+# from game_logic
+from Back.game_logic import format_grid_for_llm
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 # from move_request import MoveRequest
 
 from pydantic import BaseModel, field_validator, ValidationError
 from typing import List, Dict
+import httpx
+app = FastAPI()
 
 class MoveRequest(BaseModel):
     grid: List[List[int]]
@@ -48,11 +51,14 @@ app.add_middleware(
 
 @app.post("/play")
 def play(request: MoveRequest):
+
     # recupere la grille
     print(f"Grille reçue: {request.grid}")
     print(f"Joueur : {request.active_player_id}")
+    print(f"Nom du modèle : {request.model_name}")
     # envoi au LLM
-    # format_grid_for_llm(request.grid)
+    formatted_grid = format_grid_for_llm(request.grid)
+    last_player_id = {request.active_player_id}
     ## prompt ingeneering
     # recup la reponse du LLM
     ### print de la réponse
