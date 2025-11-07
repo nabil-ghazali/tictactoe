@@ -1,12 +1,21 @@
 from typing import List, Dict
+<<<<<<< HEAD
 import json
 from game_logic import format_grid_for_llm
+=======
+from .game_logic import format_grid_for_llm
+from Model.model import LLMClient
+from .move_request import MoveRequest
+>>>>>>> bd2f999f8ee49526219291477a81faf3e5cf2414
 from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator, ValidationError
-from typing import List, Dict
 import httpx
+<<<<<<< HEAD
 from move_request import MoveRequest
+=======
+
+
+>>>>>>> bd2f999f8ee49526219291477a81faf3e5cf2414
 
 app = FastAPI()
 
@@ -100,5 +109,6 @@ async def play(request: MoveRequest):
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(f"Erreur interne non gérée: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur interne lors du traitement du coup: {e}")
 
