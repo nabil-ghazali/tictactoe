@@ -75,5 +75,9 @@ sequenceDiagram
         end
     end
     
+    A-->>F: (JSON) Renvoie le coup_valide {"row": X, "col": Y}
+    
+    F->>F: (JS) Met à jour la variable 'grid'
+    F->>U: Appelle viewGrid() pour afficher le coup
 ```
 
