@@ -45,11 +45,8 @@ class LLMClient:
         {formatted_grid}
 
         Players alternate turns to avoid filling entire rows, columns, or diagonals completely.
-
         The last move was played by Player {last_player_id}, but you should focus on the entire board state.
-
         It is now Player {active_player_id}'s turn, who plays as '{current_mark}'. Your model's name is '{self.model_name}'.
-
         Given this board state and rules, select the best move for Player {active_player_id} and respond ONLY with a JSON object containing the keys 'row' and 'col' for your chosen move (1-based indices).
 
         If no valid moves remain, respond with 'pass'.
