@@ -27,7 +27,6 @@ Création d'un jeu du morpion IA vs IA
 - Parse la réponse JSON du LLM
 
 ## Schéma - Diagramme de séquence
-
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur (Navigateur)
@@ -43,42 +42,30 @@ sequenceDiagram
 
     loop Tentatives (MAX_RETRIES)
         G->>M: Appelle get_llm_move_suggestions(...)
-        M-->>G: (Python) Renvoie la liste [coup1, coup2, coup3]
+        M-->>G: (Python) Renvoie [coup1, coup2, coup3]
         
-        G->>G: (Interne) Appelle is_move_valid(grid, coup1)
-        
-        opt Coup 1 est Valide
-            G-->>A: Renvoie le coup1
-            break
-        end
-        
-        opt Coup 1 est Invalide
-            G->>G: (Interne) Appelle is_move_valid(grid, coup2)
-            
-            opt Coup 2 est Valide
-                G-->>A: Renvoie le coup2
-                break
-            end
-            
-            opt Coup 2 est Invalide
-                G->>G: (Interne) Appelle is_move_valid(grid, coup3)
-                
-                opt Coup 3 est Valide
-                    G-->>A: Renvoie le coup3
-                    break
-                end
-                
-                opt Coup 3 est Invalide
+        G->>G: Vérifie is_move_valid(coup1)
+        alt Coup 1 valide
+            G-->>A: Renvoie coup1
+        else Coup 1 invalide
+            G->>G: Vérifie is_move_valid(coup2)
+            alt Coup 2 valide
+                G-->>A: Renvoie coup2
+            else Coup 2 invalide
+                G->>G: Vérifie is_move_valid(coup3)
+                alt Coup 3 valide
+                    G-->>A: Renvoie coup3
+                else Coup 3 invalide
                     G->>G: Prépare error_history
                 end
             end
         end
     end
     
-    A-->>F: (JSON) Renvoie le coup_valide {"row": X, "col": Y}
+    A-->>F: Renvoie {"row": X, "col": Y}
     
-    F->>F: (JS) Met à jour la variable 'grid'
-    F->>U: Appelle viewGrid() pour afficher le coup
-end
+    F->>F: Met à jour la variable grid
+    F->>U: Affiche le coup via viewGrid()
+
 ```
 
