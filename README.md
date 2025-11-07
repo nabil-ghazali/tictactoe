@@ -79,6 +79,5 @@ sequenceDiagram
     
     F->>F: (JS) Met à jour la variable 'grid'
     F->>U: Appelle viewGrid() pour afficher le coup
-
 ```
 
