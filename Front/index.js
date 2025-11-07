@@ -19,12 +19,12 @@ function viewGrid() {
             cellHTML.classList.add("cell")
             // Conversion 1/2/0 en X/O/""
             let displayValue;
-            if (cell == 1){
+            if (cell === 1){
                 displayValue = "X"
-            } else if (cell == 2) {
+            } else if (cell === 2) {
                 displayValue = "O"
             } else {
-                displayValue = ""
+                displayValue = " "
             }
             cellHTML.textContent = displayValue
             gridHTML.appendChild(cellHTML)
