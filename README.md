@@ -37,48 +37,48 @@ sequenceDiagram
     participant M as Model/model.py (Client LLM)
     participant O as Ollama (Serveur IA)
 
-    U->>F: 1. Clic sur "Play"
-    F->>A: 2. fetch("/play", JSON_Grid)
-    A->>G: 3. Appelle process_llm_turn(grid, ...)
+    U->>F: Clic sur "Play"
+    F->>A: fetch("/play", JSON_Grid)
+    A->>G: Appelle process_llm_turn(grid, ...)
 
     loop Tentatives (MAX_RETRIES)
-        G->>M: 4. Appelle get_llm_move_suggestions(...)
-        M-->>G: 8. (Python) Renvoie la liste [coup1, coup2, coup3]
+        G->>M: Appelle get_llm_move_suggestions(...)
+        M-->>G: (Python) Renvoie la liste [coup1, coup2, coup3]
         
-        G->>G: 9. (Interne) Appelle is_move_valid(grid, coup1)
+        G->>G: (Interne) Appelle is_move_valid(grid, coup1)
         
         opt Coup 1 est Valide
-            G-->>A: 10. Renvoie le coup1
+            G-->>A: Renvoie le coup1
             break
         end
         
         opt Coup 1 est Invalide
-            G->>G: 11. (Interne) Appelle is_move_valid(grid, coup2)
+            G->>G: (Interne) Appelle is_move_valid(grid, coup2)
             
             opt Coup 2 est Valide
-                G-->>A: 12. Renvoie le coup2
+                G-->>A: Renvoie le coup2
                 break
             end
             
             opt Coup 2 est Invalide
-                G->>G: 13. (Interne) Appelle is_move_valid(grid, coup3)
+                G->>G: (Interne) Appelle is_move_valid(grid, coup3)
                 
                 opt Coup 3 est Valide
-                    G-->>A: 14. Renvoie le coup3
+                    G-->>A: Renvoie le coup3
                     break
                 end
                 
                 opt Coup 3 est Invalide
-                    G->>G: 15. Prépare error_history
+                    G->>G: Prépare error_history
                 end
             end
         end
     end
     
-    A-->>F: 16. (JSON) Renvoie le coup_valide {"row": X, "col": Y}
+    A-->>F: (JSON) Renvoie le coup_valide {"row": X, "col": Y}
     
-    F->>F: 17. (JS) Met à jour la variable 'grid'
-    F->>U: 18. Appelle viewGrid() pour afficher le coup
+    F->>F: (JS) Met à jour la variable 'grid'
+    F->>U: Appelle viewGrid() pour afficher le coup
 
 ```
 
