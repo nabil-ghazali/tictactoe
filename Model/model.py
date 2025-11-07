@@ -1,96 +1,131 @@
-
 import httpx
 import json
 from typing import List, Dict
-from Back.game_logic import format_grid_for_llm 
 from fastapi import HTTPException
-
-ollama_url = "http://localhost:11434"
-model_name = "gemma3:1b"
 
 
 OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
+
+def format_grid_for_llm(grid: List[List[int]]) -> str:
+    """
+    Convertit la grille numérique (0, 1, 2) en un format texte
+    lisible par le LLM (avec indices de lignes/colonnes).
+    """
+    SYMBOL_MAP = {0: " ", 1: "X", 2: "O"} # Utilise " " pour vide
+    header = "   | " + " | ".join(str(i) for i in range(10)) + " |"
+    output = header + "\n" + "-" * len(header) + "\n"
+    
+    for i, row in enumerate(grid):
+        # Conversion de chaque entier de 'row' en son symbole
+        symbols = [SYMBOL_MAP[cell] for cell in row]
+        # Jointure des symboles
+        line_content = " | ".join(symbols)
+        # Ajout de l'indice de ligne formaté
+        output += f"{i:2} | {line_content} |\n"
+        
+    return output
 
 class LLMClient:
     
     def __init__(self, model_name: str):
         self.model_name = model_name
+        self.temperature = 0.2 
     
-    async def get_llm_move(self, grid: List[List[int]], active_player_id: int, error_history: str="") -> Dict[str, int]:
-        # Formatte la grille
+    # --- 1. Méthode Publique  ---
+    
+    async def get_llm_move_suggestions(self, grid: List[List[int]], active_player_id: int, error_history: str="") -> List[Dict[str, int]]:
+        """
+        Orchestre le processus complet pour obtenir les suggestions de coups.
+        """
+        
+        # Étape 1 : Construire les prompts
+        system_prompt = self._build_system_prompt()
+        user_prompt = self._build_user_prompt(grid, active_player_id, error_history)
+        
+        # Étape 2 : Construire le payload
+        json_payload = self._build_payload(user_prompt, system_prompt)
+        
+        # Étape 3 : Appeler l'API (gère les erreurs réseau)
+        ollama_response = await self._make_api_call(json_payload)
+        
+        # Étape 4 : Parser la réponse (gère les erreurs de format)
+        suggestions = self._parse_llm_response(ollama_response)
+        
+        return suggestions
+
+    # --- 2. Méthodes Privées ---
+
+    def _build_system_prompt(self) -> str:
+        """Génère le prompt système statique."""
+        return """
+        You are a highly efficient and strict Tic-Tac-Toe AI player on a 10x10 board.
+        Your ONLY goal is to win by aligning exactly 5 marks.
+        
+        STRICT INSTRUCTION: Your move MUST be an empty cell, represented by ' ' (a space).
+        You MUST respond ONLY with a JSON object containing a "moves" key, which holds a list of your top 3 preferred moves.
+        Example: {"moves": [{"row": 5, "col": 5}, {"row": 4, "col": 5}, {"row": 6, "col": 6}]}
+        """
+
+    def _build_user_prompt(self, grid: List[List[int]], active_player_id: int, error_history: str) -> str:
+        """Génère le prompt utilisateur dynamique avec l'état du jeu."""
         formatted_grid = format_grid_for_llm(grid)
         current_mark = "X" if active_player_id == 1 else "O"
-        print(f"Envoi de la requête au joueur {active_player_id}...")
-        # Construction du prompt
-        prompt = f"""
-                You are playing a 10x10 Tic-Tac-Toe game.
-                Current game state (' ' means EMPTY cell, 'X' or 'O' means OCCUPIED):
-                {formatted_grid}
+        
+        return f"""
+        You are playing a 10x10 Tic-Tac-Toe game.
+        Current game state (' ' means EMPTY cell):
+        {formatted_grid}
 
-                It is now Player {active_player_id}'s turn, who plays as '{current_mark}'.
-                
-                {error_history}
+        It is now Player {active_player_id}'s turn ({current_mark}).
+        {error_history}
 
-                CRUCIAL: Analyze the board and choose a position (row, col) that is currently **EMPTY (' ')**. 
-                DO NOT select an occupied position. An occupied position is a cell with a symbol 'X' (1) or 'O'. 
-                The coordinates are 0-based indices from the row and column headers shown in the grid.
+        CRUCIAL: Analyze the board and find the **Top 3 BEST moves** that are currently **EMPTY (' ')**.
+        Respond ONLY with the JSON format requested in the system prompt.
         """
-                
-        json_payload = {
+    
+    def _build_payload(self, user_prompt: str, system_prompt: str) -> Dict:
+        """Construit le dictionnaire JSON final pour l'API Ollama."""
+        return {
             "model": self.model_name,
-            "prompt": prompt,
+            "prompt": user_prompt,
+            "system": system_prompt,
             "stream": False,
-            "system": """You are a highly efficient and strict Tic-Tac-Toe AI player on a 10x10 board.
-                            Your ONLY goal is to win by aligning exactly 5 marks.
-
-                            STRICT INSTRUCTION: Your move MUST be an empty cell, represented by ' ' (a space) in the current game state. If you select an occupied cell ('X' or 'O'), your move will be rejected. 
-                            Respond ONLY with a single JSON object: {"row": R, "col": C}.""",
-                "options": {
-                "temperature": 0.1
-                },
+            "options": {
+                "temperature": self.temperature
+            },
             "format": "json"
         }
 
+    async def _make_api_call(self, json_payload: Dict) -> Dict:
+        """Exécute l'appel HTTP asynchrone et gère les erreurs réseau."""
         try:
             async with httpx.AsyncClient(timeout=None) as client:
                 response = await client.post(OLLAMA_API_URL, json=json_payload)
-                
-                # Attrape les erreurs 4xx/5xx du serveur Ollama
                 response.raise_for_status() 
-                
-                ollama_response = response.json()
-                json_string = ollama_response.get("response", None)
-                
-                if json_string is None:
-                    # Cas où Ollama ne renvoie même pas la clé 'response'
-                    raise ValueError("La réponse Ollama est vide ou mal formatée.")
-                
-                coup_joue = json.loads(json_string)
-
-                # Validation de la réponse JSON du LLM (Row/Col)
-                if isinstance(coup_joue, dict) and 'row' in coup_joue and 'col' in coup_joue:
-                    # Vérifie si le coup_joue n'est pas sur une case déjà remplie
-                    row, col = coup_joue["row"], coup_joue["col"]
-                    if grid[row][col] != 0:
-                        raise ValueError(f"Case déjà occupée à la position ({row}, {col}).")
-                    print(f"Coup joué par le joueur {active_player_id} : {coup_joue} ")
-                    return coup_joue
-                # Gestion du cas "pass" (si le LLM le renvoie correctement)
-                elif coup_joue == "pass":
-                    return {"pass": True}
-                else:
-                    raise ValueError("Réponse JSON du LLM incomplète ou invalide (clés manquantes).")
+                return response.json()
         
         except httpx.ConnectError:
-            # 1. Erreur de connexion (même si le test marche, une interruption est possible)
-            raise HTTPException(status_code=503, detail="Ollama n'est pas joignable ou le port est incorrect.")
-        
+            raise HTTPException(status_code=503, detail="Ollama n'est pas joignable.")
         except httpx.HTTPStatusError as e:
-            # 2. Erreur HTTP du serveur Ollama (ex: 404, 500)
             raise HTTPException(status_code=502, detail=f"Erreur du serveur Ollama: {e.response.text}")
-        
-        except (json.JSONDecodeError) as e:
-            # 3. Erreur de parsing ou de validation (le LLM a mal répondu)
-            print(f"Erreur LLM/Parsing: {e}. Chaîne reçue: {json_string}")
-            raise HTTPException(status_code=500, detail=f"LLM a répondu de manière non-JSON ou invalide : {e}")            
 
+    def _parse_llm_response(self, ollama_response: Dict) -> List[Dict[str, int]]:
+        """Parse la réponse JSON d'Ollama et valide la structure attendue."""
+        json_string = None # Initialisé pour le bloc except
+        try:
+            json_string = ollama_response.get("response", None)
+            if json_string is None:
+                raise ValueError("La réponse Ollama est vide (clé 'response' manquante).")
+            
+            parsed_data = json.loads(json_string)
+
+            # Valide la structure {"moves": [...]}
+            if isinstance(parsed_data, dict) and "moves" in parsed_data and isinstance(parsed_data["moves"], list):
+                return parsed_data["moves"]
+            else:
+                raise ValueError("Réponse JSON du LLM incomplète (clé 'moves' manquante ou n'est pas une liste).")
+        
+        except (json.JSONDecodeError, ValueError) as e:
+            # Gère les erreurs de parsing ou de structure
+            print(f"Erreur LLM/Parsing: {e}. Chaîne reçue: {json_string}")
+            raise HTTPException(status_code=500, detail=f"LLM a répondu de manière non-JSON ou invalide : {e}")
