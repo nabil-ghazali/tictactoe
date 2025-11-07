@@ -44,7 +44,7 @@ sequenceDiagram
     A->>G: 3. Appelle process_llm_turn(grid, ...)
     
     loop Tentatives (MAX_RETRIES)
-        G->>M: 4. Appelle get_llm_move_suggestions(grid, error_history)
+        G->>M: 4. Appelle get_llm_move_suggestions(...)
         
         M->>M: 5. (Interne) Appelle format_grid_for_llm(grid)
         M->>O: 6. (httpx) Envoie Prompt (avec "Top 3 moves")
@@ -56,20 +56,23 @@ sequenceDiagram
         alt Coup 1 est Valide
             G-->>A: 10. Renvoie le coup1
             break
+        
         else Coup 1 Invalide
             G->>G: 11. (Interne) Appelle is_move_valid(grid, coup2)
             
             alt Coup 2 est Valide
                 G-->>A: 12. Renvoie le coup2
                 break
+            
             else Coup 2 Invalide
                 G->>G: 13. (Interne) Appelle is_move_valid(grid, coup3)
                 
                 alt Coup 3 est Valide
                     G-->>A: 14. Renvoie le coup3
                     break
+                
                 else Tous les coups Invalides
-                    G->>G: 15. Prépare error_history pour la prochaine tentative
+                    G->>G: 15. Prépare error_history
                 end
             end
         end
