@@ -52,8 +52,8 @@ async def play(request: MoveRequest):
         # Erreur levée par process_llm_turn si les 3 tentatives échouent
         raise HTTPException(status_code=400, detail=f"Echec du LLM : {e}")
     except httpx.ConnectError:
-        # Erreur si Ollama n'est pas joignable
-        raise HTTPException(status_code=503, detail="Ollama injoignable.")
+        # Erreur si le modèle n'est pas joignable
+        raise HTTPException(status_code=503, detail="Modèle injoignable.")
     except Exception as e:
         # Lève les erreur 500/502 par le LLMCLient
         raise e
