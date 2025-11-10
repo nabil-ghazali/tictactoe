@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
 import httpx
 
-app = FastAPI()
+app= FastAPI()
 
 app.add_middleware(
     CORSMiddleware,

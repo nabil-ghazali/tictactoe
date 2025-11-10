@@ -27,7 +27,6 @@ Création d'un jeu du morpion IA vs IA
 - Parse la réponse JSON du LLM
 
 ## Schéma - Diagramme de séquence
-
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur (Navigateur)
@@ -37,39 +36,36 @@ sequenceDiagram
     participant M as Model/model.py (Client LLM)
     participant O as Ollama (Serveur IA)
 
-    U->>F: 1. Clic sur "Play"
-    
-    F->>A: 2. fetch("/play", JSON_Grid)
-    
-    A->>G: 3. Appelle process_llm_turn(grid, ...)
-    
+    U->>F: Clic sur "Play"
+    F->>A: fetch("/play", JSON_Grid)
+    A->>G: Appelle process_llm_turn(grid, ...)
+
     loop Tentatives (MAX_RETRIES)
-        G->>M: 4. Appelle get_llm_move_suggestions(grid, error_history)
+        G->>M: Appelle get_llm_move_suggestions(...)
+        M-->>G: (Python) Renvoie [coup1, coup2, coup3]
         
-        M->>M: 5. (Interne) Appelle format_grid_for_llm(grid)
-        M->>O: 6. (httpx) Envoie Prompt (avec "Top 3 moves")
-        O-->>M: 7. (JSON) Réponse {"moves": [...]}
-        M-->>G: 8. (Python) Renvoie la liste [coup1, coup2, coup3]
-        
-        G->>G: 9. (Interne) Appelle is_move_valid(grid, coup1)
-        alt Coup 1 est Valide
-            G-->>A: 10. Renvoie le coup1
-            break
-        else Coup 1 Invalide
-            G->>G: 10b. Appelle is_move_valid(grid, coup2)
-            alt Coup 2 est Valide
-                G-->>A: 10c. Renvoie le coup2
-                break
-            else Coups 2 et 3 Invalides
-                G->>G: 10d. Prépare error_history pour la prochaine tentative
+        G->>G: Vérifie is_move_valid(coup1)
+        alt Coup 1 valide
+            G-->>A: Renvoie coup1
+        else Coup 1 invalide
+            G->>G: Vérifie is_move_valid(coup2)
+            alt Coup 2 valide
+                G-->>A: Renvoie coup2
+            else Coup 2 invalide
+                G->>G: Vérifie is_move_valid(coup3)
+                alt Coup 3 valide
+                    G-->>A: Renvoie coup3
+                else Coup 3 invalide
+                    G->>G: Prépare error_history
+                end
             end
         end
     end
     
-    A-->>F: 11. (JSON) Renvoie le coup_valide {"row": X, "col": Y}
+    A-->>F: Renvoie {"row": X, "col": Y}
     
-    F->>F: 12. (JS) Met à jour la variable 'grid'
-    F->>U: 13. Appelle viewGrid() pour afficher le coup
+    F->>F: Met à jour la variable grid
+    F->>U: Affiche le coup via viewGrid()
 
 ```
 
