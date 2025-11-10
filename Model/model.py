@@ -1,10 +1,28 @@
 import httpx
+import os
 import json
 from typing import List, Dict
 from fastapi import HTTPException
+from dotenv import load_dotenv
 
+load_dotenv()
 
-OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
+# Stockage des configurations API dans un dict
+API_CONFIGS = {
+    "o4-mini": {
+        "endpoint": os.getenv("URL_O4MINI"),
+        "key": os.getenv("KEY_O4MINI") 
+    },
+    "gpt-4o": {
+        "endpoint": os.getenv("URL_GPT4O"),
+        "key": os.getenv('KEY_GPT4O')
+    }
+}
+# Vérification que toutes les clés sont chargées
+for model, config in API_CONFIGS.items():
+    if not config["endpoint"] or not config["key"]:
+        raise EnvironmentError(f"Clé ou Endpoint manquants pour {model}.")
+    
 
 def format_grid_for_llm(grid: List[List[int]]) -> str:
     """
@@ -28,8 +46,13 @@ def format_grid_for_llm(grid: List[List[int]]) -> str:
 class LLMClient:
     
     def __init__(self, model_name: str):
+        
+        if model_name not in API_CONFIGS:
+            raise ValueError(f"Configuration API non trouvé pour le modèle : {model_name}.")
+        
+        self.config = API_CONFIGS[model_name]
         self.model_name = model_name
-        self.temperature = 0.2 
+        self.temperature = 1
     
     # --- 1. Méthode Publique  ---
     
@@ -46,14 +69,22 @@ class LLMClient:
         json_payload = self._build_payload(user_prompt, system_prompt)
         
         # Étape 3 : Appeler l'API (gère les erreurs réseau)
-        ollama_response = await self._make_api_call(json_payload)
+        model_response = await self._make_api_call(json_payload)
         
         # Étape 4 : Parser la réponse (gère les erreurs de format)
-        suggestions = self._parse_llm_response(ollama_response)
+        suggestions = self._parse_llm_response(model_response)
         
         return suggestions
 
     # --- 2. Méthodes Privées ---
+    def _build_headers(self) -> Dict:
+        """
+        Construit les en-têtes d'authentification avec la clé API de l'instance actuelle.
+        """
+        return {
+            "Authorization": f"Bearer {self.config['key']}",
+            "Content-Type": "application/json"
+        }
 
     def _build_system_prompt(self) -> str:
         """Génère le prompt système statique."""
@@ -84,38 +115,49 @@ class LLMClient:
         """
     
     def _build_payload(self, user_prompt: str, system_prompt: str) -> Dict:
-        """Construit le dictionnaire JSON final pour l'API Ollama."""
+        """Construit le dictionnaire JSON final pour l'API du modèle."""
         return {
-            "model": self.model_name,
-            "prompt": user_prompt,
-            "system": system_prompt,
-            "stream": False,
-            "options": {
-                "temperature": self.temperature
-            },
-            "format": "json"
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "temperature": self.temperature,
+            "response_format": {"type": "json_object"}
+            
         }
 
     async def _make_api_call(self, json_payload: Dict) -> Dict:
         """Exécute l'appel HTTP asynchrone et gère les erreurs réseau."""
-        try:
-            async with httpx.AsyncClient(timeout=None) as client:
-                response = await client.post(OLLAMA_API_URL, json=json_payload)
-                response.raise_for_status() 
-                return response.json()
-        
-        except httpx.ConnectError:
-            raise HTTPException(status_code=503, detail="Ollama n'est pas joignable.")
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=502, detail=f"Erreur du serveur Ollama: {e.response.text}")
+        headers = self._build_headers()
+        async with httpx.AsyncClient(timeout=None) as client:
+                    response = await client.post(
+                        self.config["endpoint"],
+                        json=json_payload,
+                        headers=headers)
+                    
+                    try:
+                        response.raise_for_status() 
+                    except httpx.HTTPStatusError as e:
+                        # --- AJOUT TEMPORAIRE POUR DÉBOGAGE ---
+                        print("\n--- ERREUR AZURE REÇUE ---")
+                        print(f"Statut Reçu: {e.response.status_code}")
+                        # Affiche le corps de la réponse d'erreur, qui contient le message d'Azure
+                        print(f"Corps de l'Erreur: {e.response.text}") 
+                        print("-----------------------------\n")
+                        # --- FIN DE L'AJOUT TEMPORAIRE ---
+                        if e.response.status_code == 401:
+                            raise HTTPException(status_code=401, detail="Clé API Azure invalide ou expirée.")
+                        raise HTTPException(status_code=502, detail=f"Erreur du serveur Azure: {e.response.text}")
+                    
+                    return response.json()
 
-    def _parse_llm_response(self, ollama_response: Dict) -> List[Dict[str, int]]:
-        """Parse la réponse JSON d'Ollama et valide la structure attendue."""
+    def _parse_llm_response(self, api_response: Dict) -> List[Dict[str, int]]:
+        """Parse la réponse JSON du modèle et valide la structure attendue."""
         json_string = None # Initialisé pour le bloc except
         try:
-            json_string = ollama_response.get("response", None)
+            json_string = api_response["choices"][0]["message"]["content"]
             if json_string is None:
-                raise ValueError("La réponse Ollama est vide (clé 'response' manquante).")
+                raise ValueError("La réponse du modèle est vide (clé 'response' manquante).")
             
             parsed_data = json.loads(json_string)
 

@@ -1,6 +1,4 @@
-from typing import List, Dict
-from .game_logic import format_grid_for_llm, check_win
-from Model.model import LLMClient
+from .game_logic import process_llm_turn, check_win, is_grid_full
 from .move_request import MoveRequest
 from fastapi import FastAPI, HTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -16,55 +14,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MAX_RETRIES = 3 # Nombre de tentatives
+MAX_RETRIES = 3 
 
 @app.post("/play")
 async def play(request: MoveRequest):
-    OLLAMA_API_URL = "http://127.0.0.1:11434/api/generate"
-    # 1 - Initialisation du client LLM
-    llm_client = LLMClient(OLLAMA_API_URL=request.model_name)
-    
-    # 2 - Utilisation de la méthode get_llm_move
-    
+    """
+    Déclenche le jeu automatique. La boucle s'arrête si :
+    1. Victoire détectée.
+    2. Grille complète (Match Nul).
+    3. Erreur irrécupérable du LLM.
+    """
+        
     try:
-        coup_joue = await llm_client.get_llm_move(
+        # 1. Obtenir le coup valide
+        coup_joue = await process_llm_turn(
             grid=request.grid,
             active_player_id=request.active_player_id,
             model_name=request.model_name,
             max_retries=MAX_RETRIES
         )
-        # Créer une grille temporaire pour appliquer le coup
-        temp_grid = [row[:] for row in request.grid]
+        
         row = coup_joue["row"]
         col = coup_joue["col"]
-        
-        # Appliquer le coup du LLM sur la grille temporaire
+
+        # 2. Appliquer le coup à une grille temporaire pour la vérification
+        temp_grid = [r[:] for r in request.grid]
         temp_grid[row][col] = request.active_player_id
         
-        # Appelle la 
-        is_winner = check_win(
-            temp_grid,
-            request.active_player_id,
-            row,
-            col
-        )
+        # 3. Vérifier les conditions de fin de jeu
+        is_winner = check_win(temp_grid, request.active_player_id, row, col)
+        is_draw = False
+        if not is_winner:
+            is_draw = is_grid_full(temp_grid)
         
+        # 4. Retourner le coup et le statut du jeu
         return {
             "row": row,
             "col": col,
+            "player_id": request.active_player_id,
             "is_winner": is_winner,
-            "player_id": request.active_player_id
+            "is_draw": is_draw
         }
+
+        # --- Gestion des erreurs (inchangée) ---
     except ValueError as e:
-        # Erreur levée par process_llm_turn si les 3 tentatives échouent
-        raise HTTPException(status_code=400, detail=f"Echec du LLM : {e}")
+        raise HTTPException(status_code=400, detail=f"Échec du LLM : {e}")
     except httpx.ConnectError:
-        # Erreur si Ollama n'est pas joignable
-        raise HTTPException(status_code=503, detail="Ollama injoignable.")
-    except Exception as e:
-        # Lève les erreur 500/502 par le LLMCLient
+        raise HTTPException(status_code=503, detail="Serveur LLM (Azure) injoignable.")
+    except HTTPException as e:
         raise e
     except Exception as e:
-        # Lève les erreurs internes de Python
         print(f"Erreur interne non gérée: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=50, detail=f"Erreur inattendue : {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Erreur interne inattendue : {type(e).__name__}")
+    

@@ -48,7 +48,7 @@ async def process_llm_turn(
                 
                 # Vérification par l'arbitre (notre code Python)
                 if is_move_valid(grid, row, col):
-                    print(f"Tentative {attempt + 1}: Coup valide trouvé {move}")
+                    print(f"Tentative {attempt + 1} de {model_name}: Coup valide trouvé {move}")
                     return move # On a trouvé un coup valide
             
             # 3. Si aucun coup valide n'est trouvé dans les suggestions
@@ -110,5 +110,14 @@ def check_win(grid: List[List[int]],
             return True # Condition de victoire atteinte
             
     return False # Pas atteinte
+
+def is_grid_full(grid: List[List[int]]) -> bool:
+    """
+    Vérifie si la grille est pleine (sans cases vide (0))
+    """
+    for row in grid:
+        if 0 in row:
+            return False
+    return True
         
         
