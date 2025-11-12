@@ -1,6 +1,10 @@
 # tictactoe
 Création d'un jeu du morpion IA vs IA
 
+# Objectif du projet
+
+Faire affronter des LLM dans un jeu du morpion dans une grille 10x10. Le système gère l'alternance des tours, la validité des coups des LLM et l'affichage dynamique de la partie.
+
 ## Schématisation des responsabilités
 
 ### Front/index.js

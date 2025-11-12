@@ -1,0 +1,24 @@
+# .dockerignore
+
+# Ne jamais inclure les secrets !
+.env
+
+# Exclure les environnements virtuels locaux
+.venv/
+*.venv/
+
+# Exclure les fichiers de cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Exclure les fichiers Git
+.git/
+.gitignore
+
+# Exclure les fichiers de configuration de l'IDE
+.vscode/
+.idea/
+
+# Exclure le code Front-end (n'est pas nécessaire pour le conteneur back-end)
+Front/
