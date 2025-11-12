@@ -6,6 +6,19 @@ from fastapi import HTTPException
 from dotenv import load_dotenv
 
 load_dotenv()
+# grille_test = [[0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0],
+# [0,0,0,0,0,0,0,0,0,0]]
+
+
+
 
 # Stockage des configurations API dans un dict
 API_CONFIGS = {
