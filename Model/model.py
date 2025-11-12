@@ -31,11 +31,6 @@ API_CONFIGS = {
         "key": os.getenv('KEY_GPT4O')
     }
 }
-# Vérification que toutes les clés sont chargées
-for model, config in API_CONFIGS.items():
-    if not config["endpoint"] or not config["key"]:
-        raise EnvironmentError(f"Clé ou Endpoint manquants pour {model}.")
-    
 
 def format_grid_for_llm(grid: List[List[int]]) -> str:
     """
@@ -64,6 +59,11 @@ class LLMClient:
             raise ValueError(f"Configuration API non trouvé pour le modèle : {model_name}.")
         
         self.config = API_CONFIGS[model_name]
+        # Vérification que toutes les clés sont chargées
+        if not self.config["endpoint"] or not self.config['key']:
+            raise EnvironmentError(f"Configuration API non trouvée pour le modèle: {model_name}")
+            
+
         self.model_name = model_name
         self.temperature = 1
     
