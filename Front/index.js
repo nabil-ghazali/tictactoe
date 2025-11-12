@@ -107,12 +107,9 @@ async function runGameTurn() {
 // --- Le Déclencheur ---
 playButton.addEventListener("click", e => {
     if (gameIsRunning) return; // Ne pas démarrer si déjà en cours
-
-    // (Optionnel) Réinitialiser la grille si le jeu est relancé
     // grid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(0));
     // activePlayerId = 1;
     // viewGrid();
-    
     gameIsRunning = true;
     playButton.disabled = true; // Désactivation du bouton 'Play' une fois la partie lancée
     turnDisplay.textContent = "La partie commence !";
