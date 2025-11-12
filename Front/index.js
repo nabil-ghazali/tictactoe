@@ -1,4 +1,4 @@
-const urlAPI = "http://127.0.0.1:8000/play";
+const urlAPI = "https://tictactoe-nab-get-hrdwbrckhnguhba3.francecentral-01.azurewebsites.net/play";
 
 // Variables liés à la grille de jeu
 const GRID_SIZE = 10;
