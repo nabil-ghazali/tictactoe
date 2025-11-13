@@ -100,100 +100,76 @@ class LLMClient:
         }
 
     def _build_system_prompt(self) -> str:
-        """Génère le prompt système statique qui définit les règles globales du jeu."""
+        """Génère le prompt système statique."""
         return """
-        You are an advanced logical AI engine playing an extended Tic-Tac-Toe game (Gomoku) on a 10x10 grid.
-
-        RULES:
-        - "X" = Player 1
-        - "O" = Player 2
-        - "." = Empty cell
-        - Rows and columns indices are in [0, 9]
-        - The objective is to align exactly 5 identical marks (horizontally, vertically, or diagonally).
-
+        You are a highly efficient and strict Tic-Tac-Toe AI player on a 10x10 board.
+        Your ONLY goal is to win by aligning exactly 5 marks.
         STRATEGY PRIORITIES (in order):
-        1. WIN → If you can win this turn, play the winning move.
-        2. BLOCK → If your opponent can win next turn, block them.
-        3. DOUBLE THREAT → Create a move that makes two simultaneous winning threats.
-        4. EXTEND → Continue building a sequence of your own marks.
-        5. CENTER → Prefer moves near the center (around [4,4]–[5,5]).
-        6. EDGE → If no better move, play on the edge.
-        7. SMALLEST INDEX → If multiple moves are equal, choose the one with the smallest (row, col).
+            1. WIN → If you can win this turn, play the winning move.
+            2. BLOCK → If your opponent can win next turn, block them.
+            3. DOUBLE THREAT → Create a move that makes two simultaneous winning threats.
+            4. EXTEND → Continue building a sequence of your own marks.
+            5. CENTER → Prefer moves near the center (around [4,4]–[5,5]).
+            6. EDGE → If no better move, play on the edge.
+            7. SMALLEST INDEX → If multiple moves are equal, choose the one with the smallest (row, col).
+            STRICT INSTRUCTION: Your move MUST be an empty cell, represented by ' ' (a space).
+            You MUST respond ONLY with a JSON object containing a "moves" key, which holds a list of your top 3 preferred moves.
 
-        STRICT CONSTRAINTS:
-        - You MUST NEVER play on a cell that already contains "X" or "O".
-        - Only play on "." (empty cells).
-        - If the board is full and no moves are possible, respond with "pass".
-
-        OUTPUT FORMAT:
-        You must respond **ONLY** with valid JSON, in one of these two forms:
-        {"row": <int>, "col": <int>}
-        or
-        "pass"
-
-        Absolutely no text, explanation, or commentary outside of this JSON.
         """
 
-
-    def _build_user_prompt(self, grid: List[List[str]], active_player_id: int, error_history: str = "") -> str:
-        """Construit le prompt utilisateur dynamique à partir de l'état du jeu actuel."""
+    def _build_user_prompt(self, grid: List[List[int]], active_player_id: int, error_history: str) -> str:
+        """Génère le prompt utilisateur dynamique avec l'état du jeu."""
+        formatted_grid = format_grid_for_llm(grid)
         current_mark = "X" if active_player_id == 1 else "O"
-        formatted_grid = json.dumps(grid, ensure_ascii=False)
-
+        
         return f"""
-        Game State (10x10 grid):
-        {{
-            "board": {formatted_grid},
-            "to_move": "{current_mark}"
-        }}
+        You are playing a 10x10 Tic-Tac-Toe game.
+        Current game state (' ' means EMPTY cell):
+        {formatted_grid}
 
         It is now Player {active_player_id}'s turn ({current_mark}).
-
-        Analyze the board according to the strategic priorities and rules.
-        Return **only** a JSON object representing a single valid move:
-        {{"row": <int>, "col": <int>}}
-        or the string "pass" if no legal moves are possible.
-
         {error_history}
+
+        CRUCIAL: Analyze the board and find the **Top 3 BEST moves** that are currently **EMPTY (' ')**.
+        Respond ONLY with the JSON format requested in the system prompt.
         """
-
-
+    
     def _build_payload(self, user_prompt: str, system_prompt: str) -> Dict:
-        """Construit le message complet à envoyer au modèle OpenAI ou Azure."""
+        """Construit le dictionnaire JSON final pour l'API du modèle."""
         return {
             "messages": [
-                {"role": "system", "content": system_prompt.strip()},
-                {"role": "user", "content": user_prompt.strip()}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
             "temperature": self.temperature,
-            # On exige une réponse JSON stricte pour éviter tout texte parasite
             "response_format": {"type": "json_object"}
+            
         }
 
-        async def _make_api_call(self, json_payload: Dict) -> Dict:
-            """Exécute l'appel HTTP asynchrone et gère les erreurs réseau."""
-            headers = self._build_headers()
-            async with httpx.AsyncClient(timeout=None) as client:
-                        response = await client.post(
-                            self.config["endpoint"],
-                            json=json_payload,
-                            headers=headers)
-                        
-                        try:
-                            response.raise_for_status() 
-                        except httpx.HTTPStatusError as e:
-                            # --- AJOUT TEMPORAIRE POUR DÉBOGAGE ---
-                            print("\n--- ERREUR AZURE REÇUE ---")
-                            print(f"Statut Reçu: {e.response.status_code}")
-                            # Affiche le corps de la réponse d'erreur, qui contient le message d'Azure
-                            print(f"Corps de l'Erreur: {e.response.text}") 
-                            print("-----------------------------\n")
-                            # --- FIN DE L'AJOUT TEMPORAIRE ---
-                            if e.response.status_code == 401:
-                                raise HTTPException(status_code=401, detail="Clé API Azure invalide ou expirée.")
-                            raise HTTPException(status_code=502, detail=f"Erreur du serveur Azure: {e.response.text}")
-                        
-                        return response.json()
+    async def _make_api_call(self, json_payload: Dict) -> Dict:
+        """Exécute l'appel HTTP asynchrone et gère les erreurs réseau."""
+        headers = self._build_headers()
+        async with httpx.AsyncClient(timeout=None) as client:
+                    response = await client.post(
+                        self.config["endpoint"],
+                        json=json_payload,
+                        headers=headers)
+                    
+                    try:
+                        response.raise_for_status() 
+                    except httpx.HTTPStatusError as e:
+                        # --- AJOUT TEMPORAIRE POUR DÉBOGAGE ---
+                        print("\n--- ERREUR AZURE REÇUE ---")
+                        print(f"Statut Reçu: {e.response.status_code}")
+                        # Affiche le corps de la réponse d'erreur, qui contient le message d'Azure
+                        print(f"Corps de l'Erreur: {e.response.text}") 
+                        print("-----------------------------\n")
+                        # --- FIN DE L'AJOUT TEMPORAIRE ---
+                        if e.response.status_code == 401:
+                            raise HTTPException(status_code=401, detail="Clé API Azure invalide ou expirée.")
+                        raise HTTPException(status_code=502, detail=f"Erreur du serveur Azure: {e.response.text}")
+                    
+                    return response.json()
 
     def _parse_llm_response(self, api_response: Dict) -> List[Dict[str, int]]:
         """Parse la réponse JSON du modèle et valide la structure attendue."""
