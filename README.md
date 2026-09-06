@@ -90,10 +90,7 @@ Prérequis : **Python 3.12+**, [poetry](https://python-poetry.org/), un déploie
 git clone <url-du-repo> && cd tictactoe
 poetry install
 
-cat > .env <<'ENV'
-URL_GPT4O=https://<votre-ressource>.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-12-01-preview
-KEY_GPT4O=<votre-cle>
-ENV
+cp .env.example .env    # renseigner URL_GPT4O et KEY_GPT4O
 ```
 
 ## Utilisation
