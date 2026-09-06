@@ -12,10 +12,6 @@
   <img src="https://img.shields.io/badge/LLM-Azure%20OpenAI-0089D6" alt="Azure OpenAI">
 </p>
 
-<!-- [PAS ENCORE LIVRE] P1 :
-<p align="center"><img src="docs/demo.gif" width="640" alt="Une partie LLM contre LLM"></p>
--->
-
 ---
 
 ## Le problème
@@ -100,22 +96,17 @@ poetry run uvicorn Back.api:app --reload    # API sur http://127.0.0.1:8000
 # puis servir Front/ (ex. python -m http.server) et ouvrir index.html
 ```
 
-Une démo jouable en ligne est prévue. [PAS ENCORE LIVRE]
-
 ## Résultats
 
-**Aucune mesure n'est encore publiée.** [PAS ENCORE LIVRE] Un indicateur utile sera
-versionné : le **taux de coups invalides par tentative**, par modèle, sur un lot de
-parties - il quantifie l'apport de la boucle de correction. Aucun chiffre n'est
-avancé ici tant que cette mesure n'existe pas.
+**Aucune mesure n'est publiée.** Un indicateur pertinent serait le taux de coups
+invalides par tentative et par modèle, qui quantifierait l'apport de la boucle de
+correction. Aucun chiffre n'est avancé ici tant que cette mesure n'existe pas.
 
 ## Limites connues
 
 - La qualité de jeu des LLM au morpion 10x10 reste faible ; l'intérêt du projet est
   l'ingénierie autour du LLM, pas la performance au jeu.
 - Dépendance à un déploiement Azure OpenAI (clé, quota).
-- `test_ollama.py` présent à la racine est un script d'essai, pas un test ; il sera
-  retiré. [PAS ENCORE LIVRE]
 
 ## Améliorations futures
 
