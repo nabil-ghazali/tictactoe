@@ -96,6 +96,20 @@ poetry run uvicorn Back.api:app --reload    # API sur http://127.0.0.1:8000
 # puis servir Front/ (ex. python -m http.server) et ouvrir index.html
 ```
 
+## Tests
+
+Tests de la logique pure (règles du jeu et parsing de la réponse LLM), sans appel
+réseau ni clé API :
+
+```bash
+pip install pytest        # ou : poetry add --group dev pytest
+pytest -q
+```
+
+Couverture : `check_win` (4 directions, comptage bidirectionnel, bord de grille),
+`is_move_valid`, `is_grid_full`, `format_grid_for_llm`, `_parse_llm_response`
+(JSON valide, JSON invalide, clé `moves` absente ou mal typée).
+
 ## Résultats
 
 **Aucune mesure n'est publiée.** Un indicateur pertinent serait le taux de coups
@@ -110,10 +124,9 @@ correction. Aucun chiffre n'est avancé ici tant que cette mesure n'existe pas.
 
 ## Améliorations futures
 
-- Tests de la logique pure (`check_win`, `is_move_valid`, analyse de réponses
-  mockées).
 - Comparaison `gpt-4o` / `o4-mini` : qualité de jeu, coût, latence.
 - Adversaire heuristique (minimax limité) comme point de référence.
+- Tests d'intégration de `process_llm_turn` (boucle de correction) avec un client LLM mocké.
 
 ## Ce que ce projet démontre
 
